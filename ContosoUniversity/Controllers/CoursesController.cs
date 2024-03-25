@@ -19,7 +19,8 @@ namespace ContosoUniversity.Controllers
         {
             _context = context;
         }
-        public async Task<IActionResult> Index(int? departmentId, int? id, int? courseID)
+
+        public async Task<IActionResult> Index( int? courseID)
         {
             var viewModel = new InstructorIndexData();
 
@@ -28,80 +29,51 @@ namespace ContosoUniversity.Controllers
                 .Include(i => i.Department)
                 .Include(i => i.Enrollments)
                     .ThenInclude(i => i.Student)
+                .Include(c => c.CourseAssignments) // Include course assignments
+                    .ThenInclude(ca => ca.Instructor) // Include instructors
                 .AsNoTracking()
-                .OrderBy(i => i.Title);
-
-            // Filter by department if departmentId is provided
-            if (departmentId != null)
-            {
-                coursesQuery = coursesQuery.Where(c => c.DepartmentID == departmentId.Value);
-            }
+                .OrderBy(c => c.Title);
 
             // Execute the query and assign the result to viewModel.Courses
             viewModel.Courses = await coursesQuery.ToListAsync();
 
-            // If courseID is provided, filter the viewModel.Courses and set viewModel.Instructors
+            // If courseID is provided, filter the viewModel.Courses and populate viewModel.Instructors
             if (courseID != null)
             {
                 ViewData["CourseId"] = courseID.Value;
-
-                Course course = viewModel.Courses.Where(i => i.CourseID == courseID.Value).Single();
+                Course course = viewModel.Courses.FirstOrDefault(i => i.CourseID == courseID.Value);
                 if (course != null)
                 {
-                    viewModel.Instructors = course.CourseAssignments.Select(ca => ca.Instructor);
+                    if (course.CourseAssignments != null && course.CourseAssignments.Any())
+                    {
+                        viewModel.Instructors = course.CourseAssignments.Select(ca => ca.Instructor).ToList();
+                    }
                 }
             }
-
-            // If id is provided, filter viewModel.Instructors and set viewModel.CourseAssignments
-            if (id.HasValue && viewModel.Instructors != null)
-            {
-                Instructor instructor = viewModel.Instructors.FirstOrDefault(i => i.ID == id);
-                if (instructor != null)
-                {
-                    viewModel.CourseAssignments = instructor.CourseAssignments;
-                }
-            }
-
             return View(viewModel);
         }
 
-        //public async Task<IActionResult> Index(int? departmentId, int? id, int? courseID)
-        //{
-        //    var viewModel = new InstructorIndexData();
-        //    viewModel.Courses = await _context.Courses
-        //        .Include(i => i.Department)
-        //        .Include(i => i.Enrollments)
-        //            .ThenInclude(i => i.Student)
-        //        .AsNoTracking()
-        //        .OrderBy(i => i.Title)
-        //        .ToListAsync(); 
-        //    //viewModel.Instructors = await _context.Instructors
-        //    //      .Include(i => i.OfficeAssignment)
-        //    //      .Include(i => i.CourseAssignments)
-        //    //        .ThenInclude(i => i.Course)
-        //    //            .ThenInclude(i => i.Enrollments)
-        //    //                .ThenInclude(i => i.Student)
-        //    //      .Include(i => i.CourseAssignments)
-        //    //        .ThenInclude(i => i.Course)
-        //    //            .ThenInclude(i => i.Department)
-        //    //      .AsNoTracking()
-        //    //      .OrderBy(i => i.LastName)
-        //    //      .ToListAsync();
+        // GET: Courses
+        public async Task<IActionResult> DropDown(int? departmentId)
+        {
+            var courses = _context.Courses.AsQueryable();
+            if (departmentId.HasValue)
+            {
+                courses = courses.Where(c => c.DepartmentID == departmentId).Include(c => c.Department);
+            }
+            else
+            {
+                courses = courses.Include(c => c.Department);
+            }
 
-        //    if (courseID != null)
-        //    {
-        //        ViewData["CourseId"] = courseID.Value;
-        //        Course course = viewModel.Courses.Where(i => i.CourseID == courseID.Value).Single();
-        //        viewModel.Instructors = course.CourseAssignments.Select(s => s.Instructor);
-        //    }
+            ViewBag.SelectedDepartmentId = departmentId;
 
-        //    if (id != null)
-        //    {
-        //        viewModel.CourseAssignments = viewModel.Instructors.Where(x => x.ID == id).Single().CourseAssignments;
+            // Populate the departments dropdown list
+            PopulateDepartmentsDropDownList();
 
-        //    }
-        //    return View(viewModel);
-        //}
+            return View(await courses.AsNoTracking().ToListAsync());
+        }
+
 
         // GET: Courses/Details/5
         public async Task<IActionResult> Details(int? id)
