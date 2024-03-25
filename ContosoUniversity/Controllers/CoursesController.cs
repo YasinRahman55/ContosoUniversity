@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using ContosoUniversity.Data;
 using ContosoUniversity.Models;
+using ContosoUniversity.Models.SchoolViewModels;
 
 namespace ContosoUniversity.Controllers
 {
@@ -20,7 +21,7 @@ namespace ContosoUniversity.Controllers
         }
 
         // GET: Courses
-        public async Task<IActionResult> Index(int? departmentId)
+        public async Task<IActionResult> Index(int? departmentId, int? id, int? courseID)
         {
             var courses = _context.Courses.AsQueryable();
             if (departmentId.HasValue)
@@ -36,6 +37,32 @@ namespace ContosoUniversity.Controllers
 
             // Populate the departments dropdown list
             PopulateDepartmentsDropDownList();
+
+            var viewModel = new InstructorIndexData();
+            viewModel.Instructors = await _context.Instructors
+                  .Include(i => i.OfficeAssignment)
+                  .Include(i => i.CourseAssignments)
+                    .ThenInclude(i => i.Course)
+                        .ThenInclude(i => i.Enrollments)
+                            .ThenInclude(i => i.Student)
+                  .Include(i => i.CourseAssignments)
+                    .ThenInclude(i => i.Course)
+                        .ThenInclude(i => i.Department)
+                  .AsNoTracking()
+                  .OrderBy(i => i.LastName)
+                  .ToListAsync();
+
+            if (courseID != null)
+            {
+                ViewData["CourseId"] = courseID.Value;
+                Course course = viewModel.Courses.Where(i => i.CourseID == courseID.Value).Single();
+                viewModel.Instructors = course.CourseAssignments.Select(s => s.Instructor);
+            }
+
+            if (id != null)
+            {
+                viewModel.CourseAssignments = viewModel.Instructors.Where(x => x.ID == id).Single().CourseAssignments;
+            }
 
             return View(await courses.AsNoTracking().ToListAsync());
         }
