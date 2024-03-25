@@ -34,6 +34,7 @@ namespace ContosoUniversity.Controllers
             }
 
             ViewBag.SelectedDepartmentId = departmentId;
+            //return View(await courses.AsNoTracking().ToListAsync());
 
             // Populate the departments dropdown list
             PopulateDepartmentsDropDownList();
@@ -62,9 +63,9 @@ namespace ContosoUniversity.Controllers
             if (id != null)
             {
                 viewModel.CourseAssignments = viewModel.Instructors.Where(x => x.ID == id).Single().CourseAssignments;
-            }
 
-            return View(await courses.AsNoTracking().ToListAsync());
+            }
+            return View(viewModel);
         }
 
         // GET: Courses/Details/5
