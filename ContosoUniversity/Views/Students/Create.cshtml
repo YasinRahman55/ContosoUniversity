@@ -28,6 +28,12 @@
                 <span asp-validation-for="EnrollmentDate" class="text-danger"></span>
             </div>
             <div class="form-group">
+                <label asp-for="Enrollments" class="control-label"></label>
+                <select asp-for="Enrollments" class="form-control" asp-items="@(ViewBag.Enrollments)">
+                </select>
+                <span asp-validation-for="Enrollments" class="text-danger"></span>
+            </div>
+            <div class="form-group">
                 <input type="submit" value="Create" class="btn btn-primary" />
             </div>
         </form>
@@ -39,5 +45,7 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
 }

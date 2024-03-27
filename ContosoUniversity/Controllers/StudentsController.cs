@@ -112,39 +112,98 @@ namespace ContosoUniversity.Controllers
         // GET: Students/Create
         public IActionResult Create()
         {
-            return View();
+            // Initialize Enrollments property
+            var student = new Student
+            {
+                Enrollments = new List<Enrollment>()
+            };
+
+            // Populate dropdown list
+            PopulateCoursesDropDownList();
+
+            return View(student);
         }
 
         // POST: Students/Create
         // To protect from overposting attacks, enable the specific properties you want to bind to.
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        // POST: Students/Create
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("ID,LastName,FirstMidName,EnrollmentDate")] Student student)
+        public async Task<IActionResult> Create(int enrollmentID, [Bind("ID,LastName,FirstMidName,EnrollmentDate")] Student student)
         {
-
             try
             {
                 if (ModelState.IsValid)
                 {
                     _context.Add(student);
                     await _context.SaveChangesAsync();
+
+                    // Associate the student with the selected enrollment
+                    if (enrollmentID != 0)
+                    {
+                        var enrollment = await _context.Enrollments.FindAsync(enrollmentID);
+                        if (enrollment != null)
+                        {
+                            enrollment.StudentID = student.ID;
+                            _context.Update(enrollment);
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+
                     return RedirectToAction(nameof(Index));
                 }
-
             }
-            catch (DataException ex)
+            catch (Exception)
             {
-                ModelState.AddModelError("", ex.Message);
-
+                ModelState.AddModelError("", "An error occurred while creating the student.");
             }
-            catch(Exception)
-            {
-                ModelState.AddModelError("", "An Error occur, please call your system administrator.");
-            }           
+
+            // If the model state is not valid or an error occurred, return the view with the student model
+            PopulateCoursesDropDownList();
             return View(student);
         }
 
+
+
+        private void PopulateCoursesDropDownList()
+        {
+            // Fetch the list of courses from the database
+            var courses = _context.Courses.OrderBy(c => c.Title).ToList();
+
+            // Convert the list of courses to a list of SelectListItem
+            var coursesList = courses.Select(c => new SelectListItem
+            {
+                Value = c.CourseID.ToString(), // Set the value of each item to the CourseID
+                Text = c.Title // Set the display text of each item to the Title of the course
+            }).ToList();
+
+            // Add a default option to the beginning of the list
+            coursesList.Insert(0, new SelectListItem
+            {
+                Value = "", // Set the value to an empty string
+                Text = "-- Select Course --" // Set the display text to indicate selecting a course
+            });
+
+            // Set the ViewBag property to the list of courses
+            ViewBag.Enrollments = coursesList; // Change ViewBag.Courses to ViewBag.Enrollments
+        }
+
+        //create a method to populate the student's available courses when craeting a new student
+        private void PopulateAssignedCourseData(Student student)
+        {
+            var allCourses = _context.Courses;
+            var studentCourses = new HashSet<int>(student.Enrollments.Select(c => c.CourseID));
+            var viewModel = new List<Enrollment>();
+            foreach (var course in allCourses)
+            {
+                viewModel.Add(new Enrollment
+                {
+                    CourseID = course.CourseID,
+                });
+            }
+            ViewData["Courses"] = viewModel;
+        }
         // GET: Students/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {

@@ -28,7 +28,6 @@ namespace ContosoUniversity.Controllers
             IQueryable<Course> coursesQuery = _context.Courses
                 .Include(i => i.Department)
                 .Include(i => i.Enrollments)
-                    .ThenInclude(i => i.Student)
                 .Include(c => c.CourseAssignments) // Include course assignments
                     .ThenInclude(ca => ca.Instructor) // Include instructors
                 .AsNoTracking()
@@ -56,7 +55,7 @@ namespace ContosoUniversity.Controllers
         // GET: Courses
         public async Task<IActionResult> DropDown(int? departmentId)
         {
-            var courses = _context.Courses.AsQueryable();
+                        var courses = _context.Courses.AsQueryable();
             if (departmentId.HasValue)
             {
                 courses = courses.Where(c => c.DepartmentID == departmentId).Include(c => c.Department);
